@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -32,21 +33,28 @@ func main() {
 	if contents.Len() == 0 {
 		log.Fatal("no input")
 	}
-	execute([]rune(contents.String()))
+	prog := newProgram(os.Stdin, os.Stdout)
+	prog.execute([]rune(contents.String()))
 }
 
 type Program struct {
+	in   io.Reader
+	out  io.Writer
 	data []byte
 	at   int
 }
 
-func execute(src []rune) {
-	Len := len(src)
+func newProgram(in io.Reader, out io.Writer) *Program {
 	prog := new(Program)
+	prog.in = in
+	prog.out = out
 	prog.data = make([]byte, 1)
 	prog.at = 0
+	return prog
+}
 
-	for pc := 0; pc < Len; pc++ {
+func (prog *Program) execute(src []rune) {
+	for pc := 0; pc < len(src); pc++ {
 		switch src[pc] {
 		case INCR:
 			prog.data[prog.at]++
@@ -62,10 +70,10 @@ func execute(src []rune) {
 				prog.at--
 			}
 		case PUT:
-			fmt.Printf("%c", prog.data[prog.at])
+			fmt.Fprintf(prog.out, "%c", prog.data[prog.at])
 		case GET:
 			b := make([]byte, 1)
-			os.Stdin.Read(b)
+			prog.in.Read(b)
 			prog.data[prog.at] = b[0]
 		case BEGIN:
 			if prog.data[prog.at] != 0 {
